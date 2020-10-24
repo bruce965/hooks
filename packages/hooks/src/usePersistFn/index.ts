@@ -1,17 +1,28 @@
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
 
 export type noop = (...args: any[]) => any;
 
+interface PersistFn<T> {
+  persistFn: T;
+  fn?: T;
+}
+
 function usePersistFn<T extends noop>(fn: T) {
-  const ref = useRef<any>(() => {
-    throw new Error('Cannot call function while rendering.');
-  });
+  const ref = useRef<PersistFn<T>>();
 
-  ref.current = fn;
+  if (!ref.current) {
+    const x: PersistFn<T> = {
+      persistFn: function () {
+        return x.fn!.apply(this, arguments);
+      } as T,
+    };
 
-  const persistFn = useCallback(((...args) => ref.current(...args)) as T, [ref]);
+    ref.current = x;
+  }
 
-  return persistFn;
+  ref.current!.fn = fn;
+
+  return ref.current!.persistFn;
 }
 
 export default usePersistFn;
